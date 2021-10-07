@@ -22,6 +22,7 @@ import sys
 import time
 import copy
 import subprocess
+import math
 from typing import List, Tuple, Union, Optional
 
 from .font_utility import Font
@@ -918,9 +919,19 @@ class Ass:
                         or line.styleref.alignment < 4
                         or not vertical_kanji
                     ):
+                        
+                        width_limit = self.meta.play_res_x - line.styleref.margin_l - line.styleref.margin_r
+                        ideal_line_width = line.width / math.ceil(line.width / width_limit)
+                        space_width = font.get_text_extents(" ")[0] + line.styleref.spacing
+                        
                         cur_x = line.left
+                        cur_w = 0
+                        cur_y = 0
+                        line_text = ''
+                        
                         for syl in line.syls:
                             cur_x = cur_x + syl.prespace * (space_width + style_spacing)
+                            
                             # Horizontal position
                             syl.left = cur_x
                             syl.center = syl.left + syl.width / 2
@@ -944,8 +955,31 @@ class Ass:
                             syl.top = line.top
                             syl.middle = line.middle
                             syl.bottom = line.bottom
-                            syl.y = line.y
-
+                            syl.y = line.y + cur_y
+                       
+                            line_text += (' ' if syl.prespace else '') + syl.text + (' ' if syl.postspace else '') 
+                       
+                            if cur_w + syl.width + syl.postspace * (space_width + style_spacing) + style_spacing > ideal_line_width and (syl.postspace or syl.text in [' ', '']):
+                                cur_w = font.get_text_extents(line_text.rsplit(' ', 1)[0])[0]
+                                for syl in line.syls:
+                                    if hasattr(syl, 'left'):
+                                        if cur_y == 0:
+                                            syl.left += (line.width/2) - (cur_w/2)
+                                            syl.right += (line.width/2) - (cur_w/2)
+                                            syl.center += (line.width/2) - (cur_w/2)
+                                            syl.x += (line.width/2) - (cur_w/2)
+                                        syl.top -= line.height/2
+                                        syl.middle -= line.height/2
+                                        syl.bottom -= line.height/2
+                                        syl.y -= line.height/2
+                                line_text = ''
+                                        
+                                cur_x -= cur_w/2 + space_width/2
+                                cur_y += line.height/2
+                                cur_w = 0
+                            
+                            cur_w += syl.width + syl.postspace * (space_width + style_spacing) + style_spacing
+                            
                     else:  # Kanji vertical position
                         max_width, sum_height = 0, 0
                         for syl in line.syls:
