@@ -912,6 +912,7 @@ class Ass:
                         si += 1
                         last_time = syl.end_time
 
+                line_widths = []
                 # Calculate syllables positions with all syllables data already available
                 if line.syls and self.meta.play_res_x > 0 and self.meta.play_res_y > 0:
                     if (
@@ -961,18 +962,24 @@ class Ass:
                        
                             if cur_w + syl.width + syl.postspace * (space_width + style_spacing) + style_spacing > ideal_line_width and (syl.postspace or syl.text in [' ', '']):
                                 cur_w = font.get_text_extents(line_text.rsplit(' ', 1)[0])[0]
+                                
+                                line_width = max(line_widths + [line.width])
+                                
                                 for syl in line.syls:
                                     if hasattr(syl, 'left'):
-                                        if cur_y == 0:
-                                            syl.left += (line.width/2) - (cur_w/2)
-                                            syl.right += (line.width/2) - (cur_w/2)
-                                            syl.center += (line.width/2) - (cur_w/2)
-                                            syl.x += (line.width/2) - (cur_w/2)
+                                        if syl.y == line.y + cur_y:
+                                            syl.left += (line_width/2) - (cur_w/2)
+                                            syl.right += (line_width/2) - (cur_w/2)
+                                            syl.center += (line_width/2) - (cur_w/2)
+                                            syl.x += (line_width/2) - (cur_w/2)
                                         syl.top -= line.height/2
                                         syl.middle -= line.height/2
                                         syl.bottom -= line.height/2
                                         syl.y -= line.height/2
+                                        
                                 line_text = ''
+                                line_widths.append(cur_w)
+                                line.width -= cur_w
                                         
                                 cur_x -= cur_w/2 + space_width/2
                                 cur_y += line.height/2
