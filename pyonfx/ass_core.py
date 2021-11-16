@@ -930,9 +930,36 @@ class Ass:
                         cur_y = 0
                         line_text = ''
                         
+                        last_syl = False
                         for syl in line.syls:
-                            cur_x = cur_x + syl.prespace * (space_width + style_spacing)
-                            
+                            if cur_w + syl.width + syl.postspace * (space_width + style_spacing) + style_spacing > width_limit and (last_syl and (last_syl.postspace or last_syl.text in [' ', ''])):
+                                cur_w = font.get_text_extents(line_text.rsplit(' ', 1)[0])[0]
+                                line_width = max(line_widths + [line.width])
+                                
+                                for s in line.syls:
+                                    if hasattr(s, 'left'):
+                                        if s.y == line.y + cur_y:
+                                            s.left += (line_width/2) - (cur_w/2)
+                                            s.right += (line_width/2) - (cur_w/2)
+                                            s.center += (line_width/2) - (cur_w/2)
+                                            s.x += (line_width/2) - (cur_w/2)
+                                        s.top -= line.height/2
+                                        s.middle -= line.height/2
+                                        s.bottom -= line.height/2
+                                        s.y -= line.height/2
+                                       
+                                cur_x -= (last_syl.postspace * (space_width + style_spacing) + style_spacing + (font.get_text_extents(last_syl.text)[0] if last_syl.text in [' ', ''] else 0)) * 4
+                                cur_x -= (line_width/2) - (cur_w/2)
+                                
+                                line_text = ''
+                                line_widths.append(cur_w)
+                                line.width -= cur_w
+
+                                cur_y += line.height/2
+                                cur_w = 0
+                            else:
+                                cur_x = cur_x + syl.prespace * (space_width + style_spacing)
+                         
                             # Horizontal position
                             syl.left = cur_x
                             syl.center = syl.left + syl.width / 2
@@ -957,9 +984,9 @@ class Ass:
                             syl.middle = line.middle
                             syl.bottom = line.bottom
                             syl.y = line.y + cur_y
-                       
+                            
                             line_text += (' ' if syl.prespace else '') + syl.text + (' ' if syl.postspace else '') 
-                       
+
                             if cur_w + syl.width + syl.postspace * (space_width + style_spacing) + style_spacing > ideal_line_width and (syl.postspace or syl.text in [' ', '']):
                                 cur_w = font.get_text_extents(line_text.rsplit(' ', 1)[0])[0]
                                 
@@ -984,8 +1011,9 @@ class Ass:
                                 cur_x -= cur_w/2 + space_width/2
                                 cur_y += line.height/2
                                 cur_w = 0
-                            
+                           
                             cur_w += syl.width + syl.postspace * (space_width + style_spacing) + style_spacing
+                            last_syl = syl
                             
                     else:  # Kanji vertical position
                         max_width, sum_height = 0, 0
